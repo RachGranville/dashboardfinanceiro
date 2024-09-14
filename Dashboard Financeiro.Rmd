@@ -1,0 +1,405 @@
+---
+title: "Dashboard Financeiro"
+output: 
+  flexdashboard::flex_dashboard: 
+    theme:  cerulean # spacelab  #latly  #cerulean # 
+    orientation: columns
+    vertical_layout: fill
+    storyboard: true
+    social: menu
+    logo: logo_dashboardh.png
+runtime: shiny
+---
+<style>
+/* Ajustar a barra de navegação */
+.navbar {
+    height: 80px;  /* Altura da barra ajustada */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;  /* Espaço entre o título e logo */
+    padding: 0 20px;  /* Espaçamento interno da barra */
+    background-color: #2c6eaa;  /* Cor de fundo da barra */
+}
+
+/* Estilizar o título para alinhar à esquerda */
+.navbar-brand {
+    font-size: 24px;  /* Tamanho do título */
+    position: absolute;
+    left: 20px;  /* Título totalmente alinhado à esquerda */
+    top: 15px;  /* Alinhar verticalmente o título */
+    white-space: nowrap;
+}
+
+/* Estilizar a logo para aparecer no canto direito */
+.navbar-logo {
+    position: absolute;
+    right: 20px;  /* Posicionar a logo no canto direito */
+    top: 5px;  /* Alinhar a logo verticalmente */
+}
+
+.navbar-logo img {
+    height: 50px;  /* Ajustar a altura da logo */
+}
+
+/* Garantir que as colunas ocupem a largura e altura máximas */
+section[data-width] {
+    width: 100% !important;  /* Garantir que todas as colunas ocupem a largura total */
+    height: calc(100vh - 100px) !important;  /* Altura total menos o espaço da barra de navegação */
+}
+
+/* Forçar alinhamento de colunas e ajuste de altura nas tabelas */
+.dataTables_wrapper .dataTables_scrollBody {
+    max-height: calc(100vh - 160px);  /* Altura dinâmica para as tabelas */
+    overflow-y: auto;  /* Permitir rolagem vertical caso os dados excedam a altura */
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    width: 100%;  /* Garantir que o campo de pesquisa ocupe a largura total */
+}
+
+.dataTables_wrapper .dataTables_scrollHeadInner {
+    width: 100% !important;  /* Forçar largura total nos cabeçalhos */
+}
+
+.dataTables_scrollHead table, 
+.dataTables_scrollBody table {
+    width: 100% !important;  /* Forçar que as tabelas e colunas tenham 100% da largura */
+    table-layout: fixed;  /* Fixar o layout da tabela para evitar desalinhamento */
+}
+</style>
+
+
+```{r setup, include=FALSE}
+if (!require(ggplot2)) install.packages('ggplot2')
+if (!require(ggExtra)) install.packages('ggExtra')
+if (!require(tidyverse)) install.packages('tidyverse')
+if (!require(readxl)) install.packages('readxl')
+if (!require(gridExtra)) install.packages('gridExtra')
+if (!require(plotly)) install.packages('plotly')
+if (!require(gapminder)) install.packages('gapminder')
+if (!require(quantmod)) install.packages('quantmod') 
+if (!require(flexdashboard)) install.packages('flexdashboard')
+if (!require(readr)) install.packages('readr')
+if (!require(dplyr)) install.packages('dplyr')
+if (!require(rvest)) install.packages('rvest')
+if (!require(stringr)) install.packages('stringr')
+if (!require(DT)) install.packages('DT')
+if (!require(shiny)) install.packages('shiny')
+```
+
+```{r global, include=FALSE}
+# Carregar o CSV com os dados das empresas / MUDE AQUI SEU DIRETÓRIO
+dados_empresas <- read_csv("C:/Users/User/Desktop/IntroducaoaoR/dados_empresas.csv")
+```
+
+Sobre {data-icon="ion-android-desktop"}
+=================================================
+
+Column {.tabset}
+-----------------------------------------------------------------------
+<font style="font-size: 32px; color:lightblue">
+Sobre o Dashboard:
+</font>
+
+<font style="font-size: 24px">
+Este dashboard foi desenvolvido como parte de um projeto pessoal para explorar dados financeiros de ações de grandes empresas.
+
+Para ele, criamos um banco de dados uníco e novo que mapeia todos os Tickers listados na B3 com seus respectivos setores, cujo tratamento foi feito em um código separado.
+
+Já na parte de seleção dos tickers, ofereço ao usuário acesso direto aos dados históricos das ações de diversas empresas, tornando o processo dinâmico e interativo. O gráfico candlestick, amplamente utilizado por analistas financeiros, proporcionando uma visão detalhada dos preços de abertura, fechamento, máximos e mínimos, facilitando a análise técnica do desempenho dos ativos.
+
+O projeto foi desenvolvido com o objetivo de aprimorar habilidades em R, Shiny e flexdashboard, além de simplificar o acesso às informações de mercado de forma intuitiva e acessível. A personalização dos tickers dá ao usuário a flexibilidade de explorar diferentes empresas com base nos dados disponíveis no Yahoo Finance.
+
+Informações sobre a desenvolvedora:
+
+- [Rachel Granville](https://www.linkedin.com/in/rachelgranville/)
+
+</font>
+
+Tickers {data-icon="ion-android-pin"}
+===================================== 
+ 
+Column {.tabset}
+-----------------------------------------------------------------------
+
+### Banco de Dados B3
+
+```{r}
+# Criar o output no ambiente do Shiny
+output$tabela_completa <- renderDT({
+  # Exibir a tabela completa com a opção de busca por qualquer coluna (ticker, empresa ou setor)
+  datatable(dados_empresas, 
+            options = list(pageLength = 10, 
+                           autoWidth = TRUE, 
+                           searchHighlight = TRUE),
+            filter = 'top',  # Adiciona a caixa de busca no topo da tabela
+            width = "100%")  # Garantir que a tabela ocupe a largura total
+})
+
+# Mostrar a tabela completa no dashboard
+DTOutput("tabela_completa")
+
+
+```
+-----------------------------------------------------------------------
+
+### Gráficos e Estatísticas
+
+```{r echo = FALSE}
+library(plotly)
+library(dplyr)
+
+# Contagem de empresas por setor
+empresas_por_setor <- dados_empresas %>%
+  group_by(Setor) %>%
+  summarise(quantidade = n())
+
+# Gráfico de pizza para distribuição de setores
+plot_ly(empresas_por_setor, labels = ~Setor, values = ~quantidade, type = 'pie') %>%
+  layout(title = 'Distribuição de Empresas por Setor')
+
+```
+-----------------------------------------------------------------------
+
+### Indicadores
+```{r echo = FALSE}
+library(shiny)
+library(rvest)
+library(dplyr)
+
+get_indicators_web <- function(ticker) {
+  url <- paste0("https://www.dadosdemercado.com.br/acoes/", ticker)
+  
+  # Ler a página HTML
+  page <- tryCatch({
+    read_html(url)
+  }, error = function(e) {
+    message("Erro ao acessar a página: ", e)
+    return(NULL)
+  })
+  
+  if (is.null(page)) {
+    return(list("Erro" = "Página não encontrada ou ticker inválido."))
+  }
+
+  # Scraping de indicadores financeiros com tratamento de erros usando XPath
+  cotacao <- tryCatch({
+    text <- page %>%
+      html_nodes(xpath = "/html/body/div[3]/h2[1]") %>%
+      html_text()
+  }, error = function(e) NA)
+  
+  margem_bruta <- tryCatch({
+    text <- page %>%
+      html_nodes(xpath = "/html/body/div[3]/div[4]/div[1]/span[2]") %>%
+      html_text()
+  }, error = function(e) NA)
+
+  roe <- tryCatch({
+    text <- page %>%
+      html_nodes(xpath = "/html/body/div[3]/div[5]/div[1]/span[2]") %>%
+      html_text()
+  }, error = function(e) NA)
+
+  liquidez_corrente <- tryCatch({
+    text <- page %>%
+      html_nodes(xpath = "/html/body/div[3]/div[6]/div[1]/span[2]") %>%
+      html_text()
+  }, error = function(e) NA)
+  
+    EBITDA <- tryCatch({
+    text <- page %>%
+      html_nodes(xpath = "/html/body/div[3]/div[5]/div[8]/span[2]") %>%
+      html_text()
+  }, error = function(e) NA)
+
+  # Verificar se os valores estão vazios e preencher com "Não disponível"
+  indicadores <- list(
+    "Cotação" = ifelse(is.na(cotacao), "Não disponível", cotacao),
+    "Margem Bruta" = ifelse(is.na(margem_bruta), "Não disponível", margem_bruta),
+    "ROE" = ifelse(is.na(roe), "Não disponível", roe),
+    "Liquidez Corrente" = ifelse(is.na(liquidez_corrente), "Não disponível", liquidez_corrente),
+    "EBITDA" = ifelse(is.na(EBITDA), "Não disponível", EBITDA)
+  )
+  
+  return(indicadores)
+}
+
+# Interface do Usuário (UI)
+ui <- fluidPage(
+  titlePanel("Indicadores Financeiros Para Tickers Brasileiros"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      textInput("ticker", 
+                "Digite o Ticker:", 
+                value = "b3sa3", 
+                placeholder = "Exemplo: b3sa3, petr4, vale3"),
+      
+      checkboxGroupInput("indicators", 
+                         "Escolha os Indicadores que deseja ver:", 
+                         choices = c("Cotação","Margem Bruta", "ROE", "Liquidez Corrente","EBITDA"),
+                         selected = c("Cotação")),
+      
+      actionButton("go", "Buscar Indicadores")
+    ),
+    
+    mainPanel(
+      h3("Indicadores Selecionados"),
+      tableOutput("indicators_table")
+    )
+  )
+)
+
+# Lógica do servidor
+server <- function(input, output) {
+  observeEvent(input$go, {
+    # Fazer web scraping e buscar os indicadores com base no ticker digitado
+    selected_ticker <- input$ticker
+    all_indicators <- get_indicators_web(selected_ticker)
+    
+    # Filtrar os indicadores com base na seleção do usuário
+    selected_indicators <- all_indicators[input$indicators]
+    
+    # Renderizar a tabela de indicadores
+    output$indicators_table <- renderTable({
+      if (length(selected_indicators) > 0) {
+        data.frame(
+          Indicador = names(selected_indicators),
+          Valor = unlist(selected_indicators)
+        )
+      } else {
+        data.frame(Mensagem = "Nenhum indicador disponível para o ticker selecionado.")
+      }
+    })
+  })
+}
+
+# Rodar o aplicativo
+shinyApp(ui = ui, server = server)
+
+```
+Gráficos em Plotly {data-icon="ion-android-radio-button-off"}
+=============================
+<div id="precos_indicadores">
+### Escolha os inputs do seu Gráfico
+
+```{r echo = FALSE}
+# Campo de input para o usuário escolher o ticker
+textInput("ticker", "Escolha um Ticker", value = "INTC", placeholder = "Digite o código do Ticker")
+
+# Dropdown para escolher o tipo de gráfico (Plotly ou QuantMod)
+selectInput("graph_type", "Escolha o Tipo de Gráfico", 
+            choices = list("Plotly" = "plotly", "QuantMod" = "quantmod"), 
+            selected = "plotly")
+
+# Input para escolher o intervalo de datas
+dateRangeInput("date_range", "Escolha o Período",
+               start = "2022-01-01", end = Sys.Date(),
+               min = "2000-01-01", max = Sys.Date(),
+               format = "yyyy-mm-dd", separator = " até ")
+
+# Checkbox para escolher indicadores adicionais
+checkboxGroupInput("indicators", "Escolha Indicadores Adicionais",
+                   choices = list("MACD (Plotly)" = "MACD", 
+                                  "Bandas de Bollinger (QuantMod)" = "BBands"))
+```
+
+Gráfico de Candles
+
+```{r echo = FALSE}
+# Reagir ao valor do ticker escolhido, período e tipo de gráfico
+output$candle_chart <- renderUI({
+  req(input$ticker)  # Garante que o ticker seja válido
+  
+  # Converter o ticker para letras maiúsculas
+  ticker_upper <- toupper(input$ticker)
+  
+  # Baixar os dados do ticker escolhido com base no intervalo de datas selecionado
+  stock_data <- tryCatch({
+    getSymbols(Symbols = ticker_upper, 
+               from = input$date_range[1], 
+               to = input$date_range[2], 
+               auto.assign = FALSE)
+  }, error = function(e) {
+    stop("Erro ao obter dados do ticker. Verifique o ticker e o intervalo de datas.")
+  })
+  
+  # Converter os dados para um dataframe
+  ds <- data.frame(Date = index(stock_data), coredata(stock_data))
+  
+  # Verifica se as colunas corretas existem no dataframe
+  col_names <- paste0(ticker_upper, c(".Open", ".High", ".Low", ".Close"))
+  if (!all(col_names %in% colnames(ds))) {
+    stop("Colunas esperadas não encontradas nos dados do ticker.")
+  }
+  
+  # Verifica qual tipo de gráfico o usuário escolheu (Plotly ou QuantMod)
+  if (input$graph_type == "plotly") {
+    # Gráfico em Plotly
+    renderPlotly({
+      # Criar o gráfico candlestick com bordas pretas nas velas
+      fig <- plot_ly(x = ~ds$Date, type = "candlestick",
+                     open = ~ds[, paste0(ticker_upper, ".Open")],
+                     close = ~ds[, paste0(ticker_upper, ".Close")],
+                     high = ~ds[, paste0(ticker_upper, ".High")],
+                     low = ~ds[, paste0(ticker_upper, ".Low")],
+                     name = ticker_upper,
+                     increasing = list(line = list(color = "green", width = 2), fillcolor = "green", linecolor = "black"),
+                     decreasing = list(line = list(color = "red", width = 2), fillcolor = "red", linecolor = "black"))
+      
+      # Adicionar o traço de MACD apenas se selecionado
+      if ("MACD" %in% input$indicators) {
+        macd_data <- MACD(ds[, paste0(ticker_upper, ".Close")], nFast = 12, nSlow = 26, nSig = 9, type = "EMA")
+        
+        fig <- fig %>%
+          add_lines(x = ~ds$Date, y = macd_data[, "macd"], name = 'MACD', 
+                    line = list(color = 'black', width = 1.5), yaxis = 'y2') %>%
+          add_lines(x = ~ds$Date, y = macd_data[, "signal"], name = 'Sinal', 
+                    line = list(color = 'red', width = 1.5), yaxis = 'y2') %>%
+          add_bars(x = ~ds$Date, y = macd_data[, "macd"] - macd_data[, "signal"], 
+                   name = 'Histograma MACD', marker = list(color = 'gray'), yaxis = 'y2')
+        
+        # Ajuste do layout do eixo Y adicional para MACD
+        fig <- fig %>% layout(
+          yaxis2 = list(title = "MACD", overlaying = "y", side = "right")
+        )
+      }
+      
+      # Layout básico
+      fig <- fig %>% layout(
+        title = paste("Preços das Ações de", ticker_upper),
+        xaxis = list(rangeselector = list(buttons = list(
+          list(count = 3, label = "Tri", step = "month", stepmode = "backward"),
+          list(count = 6, label = "Sem", step = "month", stepmode = "backward"),
+          list(count = 1, label = "Anual", step = "year", stepmode = "backward"),
+          list(count = 1, label = "YTD", step = "year", stepmode = "todate"),
+          list(step = "all"))),
+          rangeslider = list(visible = TRUE)),
+        yaxis = list(title = "Preço")
+      )
+      
+      fig
+    })
+  } else {
+    # Gráfico em QuantMod com Volume fixo e Bandas de Bollinger como opção
+    renderPlot({
+      # Gerar o gráfico candlestick usando QuantMod com Volume
+      chartSeries(stock_data, name = paste("Preços das Ações de", ticker_upper),
+                  theme = chartTheme("white"),
+                  TA = "addVo()", type = "candlesticks",
+                  up.col = "green", dn.col = "red")
+      
+      # Adicionar Bandas de Bollinger se selecionado
+      if ("BBands" %in% input$indicators) {
+        addBBands(on = 1)
+      }
+    })
+  }
+})
+
+# Exibir o gráfico com base na seleção
+uiOutput("candle_chart")
+
+```
+<div>
